@@ -1,4 +1,5 @@
 import { AtpAgent } from '@atproto/api'
+import { HELLO_COMMAND, TOGGLE_REPOSTS_COMMAND, SET_BSKY_USERNAME_COMMAND, SET_BSKY_PASSWORD_COMMAND, SET_CHANNEL_COMMAND } from './commands';
 import { ChannelType, Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, TextChannel } from 'discord.js';
 import * as dotenv from 'dotenv';
 import * as fs from 'fs';
@@ -6,11 +7,23 @@ import * as path from 'path';
 
 dotenv.config();
 
+const token = process.env.DISCORD_TOKEN;
+const applicationId = process.env.DISCORD_APPLICATION_ID;
+
+if (!token) {
+  throw new Error('The DISCORD_TOKEN environment variable is required.');
+}
+if (!applicationId) {
+  throw new Error('The DISCORD_APPLICATION_ID environment variable is required.');
+}
+
 async function setupBlueskyAgent(): Promise<AtpAgent> {
   const username = process.env.BLUESKY_USERNAME;
   const appPassword = process.env.BLUESKY_APP_PASSWORD;
 
-  if (!username || !appPassword) { throw new Error('Bluesky username or password not set in .env file'); }
+  if (!username || !appPassword) {
+    throw new Error('Bluesky username or password not set in .env file');
+  }
 
   const agent = new AtpAgent({
     service: 'https://bsky.social'
@@ -169,4 +182,4 @@ client.on('messageCreate', message => {
   }
 });
 
-client.login(process.env.TOKEN);
+client.login(token);
