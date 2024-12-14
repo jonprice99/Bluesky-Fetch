@@ -1,0 +1,23 @@
+{
+  "name": "bluesky-fetch",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@atproto/api": "^0.13.20",
+    "@types/node": "^22.10.2",
+    "@types/ws": "^8.5.13",
+    "bluesky-fetch": "file:",
+    "discord.js": "^14.16.3",
+    "dotenv": "^16.4.7",
+    "fs": "^0.0.1-security",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.2"
+  },
+  "description": ""
+}
