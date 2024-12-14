@@ -1,15 +1,17 @@
 import { AtpAgent } from '@atproto/api'
 import { ChannelType, Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, TextChannel } from 'discord.js';
 import * as dotenv from 'dotenv';
+import * as fs from 'fs';
+import * as path from 'path';
 
 dotenv.config();
 
 async function setupBlueskyAgent(): Promise<AtpAgent> {
   const username = process.env.BLUESKY_USERNAME;
-  const appPassword = process.env.BLUESKY_APP_PASSWORD; 
-  
+  const appPassword = process.env.BLUESKY_APP_PASSWORD;
+
   if (!username || !appPassword) { throw new Error('Bluesky username or password not set in .env file'); }
-  
+
   const agent = new AtpAgent({
     service: 'https://bsky.social'
   });
@@ -17,7 +19,7 @@ async function setupBlueskyAgent(): Promise<AtpAgent> {
     identifier: username,
     password: appPassword
   });
-  
+
   return agent;
 }
 
@@ -26,13 +28,13 @@ async function getBlueskyDID(agent: AtpAgent): Promise<string> {
 
   if (!username) { throw new Error('Bluesky username not set in .env file'); }
 
-  const { data } = await agent.getProfile({actor: username})
+  const { data } = await agent.getProfile({ actor: username })
   return data.did;
 }
 
 async function fetchPosts(agent: AtpAgent): Promise<any[]> {
   const blueskyDID = await getBlueskyDID(agent);
-  const timeline = await agent.getAuthorFeed({actor: blueskyDID, filter: "posts_no_replies", limit: 1});
+  const timeline = await agent.getAuthorFeed({ actor: blueskyDID, filter: "posts_no_replies", limit: 1 });
   //console.log('Timeline data:', timeline);
   return timeline.data.feed;
 }
@@ -41,6 +43,16 @@ function constructPostUrl(post: any): string {
   const postId = post.post.uri.split('/').pop(); // This gets the last segment after the last slash
 
   return `https://bsky.app/profile/${post.post.author.handle}/post/${postId}`;
+}
+
+function updateEnv(key: string, value: string): void {
+  const envPath = path.resolve(__dirname, '.env');
+  const envVars = dotenv.parse(fs.readFileSync(envPath));
+
+  envVars[key] = value;
+
+  const newEnvString = Object.entries(envVars).map(([k, v]) => `${k}=${v}`).join('\n');
+  fs.writeFileSync(envPath, newEnvString); dotenv.config(); // Reload environment variables from the updated .env file
 }
 
 const client = new Client({
@@ -56,15 +68,6 @@ let notificationChannelId: string | null = null;
 const settings = {
   fetchReposts: false,
 }
-
-// Create the slash commands for the app
-/*const commands = [
-  // set_channel command
-  new SlashCommandBuilder()
-    .setName('set_channel')
-    .setDescription('Set the channel for the Bluesky posts to go')
-    .addChannelOption(option => option.setName('channel').setDescription("The channel to send posts to").setRequired(true))
-].map(command => command.toJSON());*/
 
 client.once('ready', async () => {
   console.log(`Logged in as ${client.user?.tag}!`);
@@ -122,7 +125,7 @@ client.on('messageCreate', message => {
 
   // Toggle reposts command
   if (message.content === '!toggleReposts') {
-    settings.fetchReposts = !settings.fetchReposts; 
+    settings.fetchReposts = !settings.fetchReposts;
     message.channel.send(`Fetch reposts is now ${settings.fetchReposts ? 'enabled' : 'disabled'}.`);
   }
 
@@ -136,6 +139,32 @@ client.on('messageCreate', message => {
       message.channel.send(`Bluesky notification channel set to <#${channel.id}>`);
     } else {
       message.channel.send('Please mention a valid text channel.');
+    }
+  }
+
+  // Set Bluesky username command
+  if (message.content.startsWith('!setBlueskyUsername')) {
+    const args = message.content.split(' ');
+    const username = args[1];
+
+    if (!username) {
+      message.channel.send('Please provide a valid Bluesky username.');
+    } else {
+      updateEnv('BLUESKY_USERNAME', username);
+      message.channel.send(`Bluesky username set to ${username}.`);
+    }
+  }
+
+  // Set Bluesky password command
+  if (message.content.startsWith('!setBlueskyPassword')) {
+    const args = message.content.split(' ');
+    const password = args[1];
+
+    if (!password) {
+      message.channel.send('Please provide your Bluesky app password.');
+    } else {
+      updateEnv('BLUESKY_APP_PASSWORD', password);
+      message.channel.send(`Bluesky app password set.`);
     }
   }
 });
