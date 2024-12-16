@@ -1,20 +1,33 @@
 import { AtpAgent } from '@atproto/api'
-import { HELLO_COMMAND, TOGGLE_REPOSTS_COMMAND, SET_BSKY_USERNAME_COMMAND, SET_BSKY_PASSWORD_COMMAND, SET_CHANNEL_COMMAND } from './commands';
-import { ChannelType, Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, TextChannel } from 'discord.js';
+import { commands } from './commands';
+import { deployCommands } from './deploy-commands';
+import { ChannelType, Client, GatewayIntentBits, SlashCommandBuilder, TextChannel } from 'discord.js';
 import * as dotenv from 'dotenv';
 import * as fs from 'fs';
 import * as path from 'path';
+import { fetchReposts, toggleReposts, notificationChannelId, setNotificationChannelId } from './settings'
 
 dotenv.config();
 
 const token = process.env.DISCORD_TOKEN;
 const applicationId = process.env.DISCORD_APPLICATION_ID;
+const guildId = process.env.DISCORD_GUILD_ID;
+const client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+  ],
+});
 
 if (!token) {
   throw new Error('The DISCORD_TOKEN environment variable is required.');
 }
 if (!applicationId) {
   throw new Error('The DISCORD_APPLICATION_ID environment variable is required.');
+}
+if (!guildId) {
+  throw new Error('The DISCORD_GUILD_ID environment variable is required.');
 }
 
 async function setupBlueskyAgent(): Promise<AtpAgent> {
@@ -68,19 +81,16 @@ function updateEnv(key: string, value: string): void {
   fs.writeFileSync(envPath, newEnvString); dotenv.config(); // Reload environment variables from the updated .env file
 }
 
-const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent,
-  ],
-});
+// Define the slash commands
+const commandsList = [
+  new SlashCommandBuilder()
+      .setName("setusername")
+      .setDescription("Set your Bluesky username so the bot can fetch posts"),
 
-// Temporary in-memory storage for notification channel ID and settings
-let notificationChannelId: string | null = null;
-const settings = {
-  fetchReposts: false,
-}
+  new SlashCommandBuilder()
+      .setName("setpassword")
+      .setDescription("Set your Bluesky app password so the bot can fetch posts"),
+].map(command => command.toJSON());
 
 client.once('ready', async () => {
   console.log(`Logged in as ${client.user?.tag}!`);
@@ -113,7 +123,7 @@ client.once('ready', async () => {
             const postURL = constructPostUrl(post);
 
             // Check for repost or original post
-            if (post.post.author.handle !== process.env.BLUESKY_USERNAME && settings.fetchReposts == true) {
+            if (post.post.author.handle !== process.env.BLUESKY_USERNAME && fetchReposts == true) {
               // Send the repost
               await channel.send(`**Reposted** from ${post.post.author.handle} - ${postURL}`)
             } else {
@@ -129,6 +139,11 @@ client.once('ready', async () => {
   }, 30000);  // Check for new posts every 30 seconds
 });
 
+// Deploy commands when new guild has been created
+client.on("guildCreate", async () => {
+  await deployCommands();
+});
+
 // Handle ! commands
 client.on('messageCreate', message => {
   // Hello world command
@@ -138,8 +153,8 @@ client.on('messageCreate', message => {
 
   // Toggle reposts command
   if (message.content === '!toggleReposts') {
-    settings.fetchReposts = !settings.fetchReposts;
-    message.channel.send(`Fetch reposts is now ${settings.fetchReposts ? 'enabled' : 'disabled'}.`);
+    toggleReposts();
+    message.channel.send(`Fetch reposts is now ${fetchReposts ? 'enabled' : 'disabled'}.`);
   }
 
   // Set channel command
@@ -148,7 +163,7 @@ client.on('messageCreate', message => {
     const channel = message.mentions.channels.first();
 
     if (channel && channel.type === ChannelType.GuildText) {
-      notificationChannelId = channel.id;
+      setNotificationChannelId(channel.id);
       message.channel.send(`Bluesky notification channel set to <#${channel.id}>`);
     } else {
       message.channel.send('Please mention a valid text channel.');
