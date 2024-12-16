@@ -1,11 +1,11 @@
 import { AtpAgent } from '@atproto/api'
 import { commands } from './commands';
 import { deployCommands } from './deploy-commands';
-import { ChannelType, Client, GatewayIntentBits, SlashCommandBuilder, TextChannel } from 'discord.js';
+import { ChannelType, Client, GatewayIntentBits, TextChannel } from 'discord.js';
 import * as dotenv from 'dotenv';
 import * as fs from 'fs';
 import * as path from 'path';
-import { fetchReposts, toggleReposts, notificationChannelId, setNotificationChannelId } from './settings'
+import { fetchReposts, toggleReposts, notificationChannelId, setNotificationChannelId, isPaused } from './settings'
 
 dotenv.config();
 
@@ -81,17 +81,6 @@ function updateEnv(key: string, value: string): void {
   fs.writeFileSync(envPath, newEnvString); dotenv.config(); // Reload environment variables from the updated .env file
 }
 
-// Define the slash commands
-const commandsList = [
-  new SlashCommandBuilder()
-      .setName("setusername")
-      .setDescription("Set your Bluesky username so the bot can fetch posts"),
-
-  new SlashCommandBuilder()
-      .setName("setpassword")
-      .setDescription("Set your Bluesky app password so the bot can fetch posts"),
-].map(command => command.toJSON());
-
 client.once('ready', async () => {
   console.log(`Logged in as ${client.user?.tag}!`);
 
@@ -99,41 +88,43 @@ client.once('ready', async () => {
   let lastPostId = '';  // Store the ID of the last post fetched
 
   setInterval(async () => {
-    if (notificationChannelId) {
-      const channel = client.channels.cache.get(notificationChannelId) as TextChannel;
+    if (!isPaused) {
+      if (notificationChannelId) {
+        const channel = client.channels.cache.get(notificationChannelId) as TextChannel;
 
-      if (!channel) {
-        console.error("Notification channel not found");
-        return;
-      }
+        if (!channel) {
+          console.error("Notification channel not found");
+          return;
+        }
 
-      try {
-        const posts = await fetchPosts(agent);
-        //console.log('Fetched posts:', posts);
+        try {
+          const posts = await fetchPosts(agent);
+          //console.log('Fetched posts:', posts);
 
-        if (posts.length > 0 && lastPostId !== posts[0].post.uri) {
-          //const newPosts = posts.filter(post => post.post.uri !== lastPostId);
-          lastPostId = posts[0].post.uri;  // Update last post ID
+          if (posts.length > 0 && lastPostId !== posts[0].post.uri) {
+            //const newPosts = posts.filter(post => post.post.uri !== lastPostId);
+            lastPostId = posts[0].post.uri;  // Update last post ID
 
-          //console.log("lastPostID", lastPostId);
-          //console.log("posts[0].post.uri", posts[0].post.uri)
+            //console.log("lastPostID", lastPostId);
+            //console.log("posts[0].post.uri", posts[0].post.uri)
 
-          for (const post of posts.reverse()) {
-            //console.log("post:", post)
-            const postURL = constructPostUrl(post);
+            for (const post of posts.reverse()) {
+              //console.log("post:", post)
+              const postURL = constructPostUrl(post);
 
-            // Check for repost or original post
-            if (post.post.author.handle !== process.env.BLUESKY_USERNAME && fetchReposts == true) {
-              // Send the repost
-              await channel.send(`**Reposted** from ${post.post.author.handle} - ${postURL}`)
-            } else {
-              // Send the post
-              await channel.send(`${postURL}`)
+              // Check for repost or original post
+              if (post.post.author.handle !== process.env.BLUESKY_USERNAME && fetchReposts == true) {
+                // Send the repost
+                await channel.send(`**Reposted** from ${post.post.author.handle} - ${postURL}`)
+              } else {
+                // Send the post
+                await channel.send(`${postURL}`)
+              }
             }
           }
+        } catch (error) {
+          console.error('Error fetching posts:', error);
         }
-      } catch (error) {
-        console.error('Error fetching posts:', error);
       }
     }
   }, 30000);  // Check for new posts every 30 seconds
@@ -142,6 +133,20 @@ client.once('ready', async () => {
 // Deploy commands when new guild has been created
 client.on("guildCreate", async () => {
   await deployCommands();
+});
+
+// Handle slash commands
+client.on("interactionCreate", async (interaction) => {
+  if (!interaction.isCommand()) {
+    return;
+  }
+
+  if (interaction.isChatInputCommand()) {
+    const { commandName } = interaction;
+    if (commands[commandName as keyof typeof commands]) {
+      commands[commandName as keyof typeof commands].execute(interaction);
+    }
+  }
 });
 
 // Handle ! commands
