@@ -7,5 +7,5 @@ export const data = new SlashCommandBuilder()
     
 export async function execute(interaction: ChatInputCommandInteraction) {
     toggleReposts();
-    await interaction.reply(`Setting is now ${fetchReposts ? 'enabled' : 'disabled'}.`);
+    await interaction.reply(`Repost fetching is now ${fetchReposts ? 'enabled' : 'disabled'}.`);
 }

@@ -84,6 +84,9 @@ function updateEnv(key: string, value: string): void {
 client.once('ready', async () => {
   console.log(`Logged in as ${client.user?.tag}!`);
 
+  console.log("deploying commands...")
+  await deployCommands();
+
   const agent = await setupBlueskyAgent();
   let lastPostId = '';  // Store the ID of the last post fetched
 
@@ -128,11 +131,6 @@ client.once('ready', async () => {
       }
     }
   }, 30000);  // Check for new posts every 30 seconds
-});
-
-// Deploy commands when new guild has been created
-client.on("guildCreate", async () => {
-  await deployCommands();
 });
 
 // Handle slash commands
