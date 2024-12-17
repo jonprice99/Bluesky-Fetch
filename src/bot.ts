@@ -1,11 +1,9 @@
 import { AtpAgent } from '@atproto/api'
 import { commands } from './commands';
 import { deployCommands } from './deploy-commands';
-import { ChannelType, Client, GatewayIntentBits, TextChannel } from 'discord.js';
+import { Client, GatewayIntentBits, TextChannel } from 'discord.js';
 import * as dotenv from 'dotenv';
-import * as fs from 'fs';
-import * as path from 'path';
-import { fetchReposts, toggleReposts, notificationChannelId, setNotificationChannelId, isPaused } from './settings'
+import { fetchReposts, notificationChannelId, isPaused } from './settings'
 
 dotenv.config();
 
@@ -69,16 +67,6 @@ function constructPostUrl(post: any): string {
   const postId = post.post.uri.split('/').pop(); // This gets the last segment after the last slash
 
   return `https://bsky.app/profile/${post.post.author.handle}/post/${postId}`;
-}
-
-function updateEnv(key: string, value: string): void {
-  const envPath = path.resolve(__dirname, '.env');
-  const envVars = dotenv.parse(fs.readFileSync(envPath));
-
-  envVars[key] = value;
-
-  const newEnvString = Object.entries(envVars).map(([k, v]) => `${k}=${v}`).join('\n');
-  fs.writeFileSync(envPath, newEnvString); dotenv.config(); // Reload environment variables from the updated .env file
 }
 
 client.once('ready', async () => {
