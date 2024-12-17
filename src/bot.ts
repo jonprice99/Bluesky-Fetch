@@ -79,46 +79,37 @@ client.once('ready', async () => {
   let lastPostId = '';  // Store the ID of the last post fetched
 
   setInterval(async () => {
-    if (!isPaused) {
-      if (notificationChannelId) {
-        const channel = client.channels.cache.get(notificationChannelId) as TextChannel;
-
-        if (!channel) {
-          console.error("Notification channel not found");
-          return;
-        }
-
-        try {
-          const posts = await fetchPosts(agent);
-          //console.log('Fetched posts:', posts);
-
-          if (posts.length > 0 && lastPostId !== posts[0].post.uri) {
-            //const newPosts = posts.filter(post => post.post.uri !== lastPostId);
-            lastPostId = posts[0].post.uri;  // Update last post ID
-
-            //console.log("lastPostID", lastPostId);
-            //console.log("posts[0].post.uri", posts[0].post.uri)
-
-            for (const post of posts.reverse()) {
-              //console.log("post:", post)
-              const postURL = constructPostUrl(post);
-
-              // Check for repost or original post
-              if (post.post.author.handle !== process.env.BLUESKY_USERNAME && fetchReposts == true) {
-                // Send the repost
-                await channel.send(`**Reposted** from ${post.post.author.handle} - ${postURL}`)
-              } else if (post.post.author.handle == process.env.BLUESKY_USERNAME && fetchReposts == false) {
-                // Send the post
-                await channel.send(`${postURL}`)
-              }
-            }
-          }
-        } catch (error) {
-          console.error('Error fetching posts:', error);
+    if (isPaused || !notificationChannelId) return;
+  
+    const channel = client.channels.cache.get(notificationChannelId) as TextChannel;
+    if (!channel) {
+      console.error("Notification channel not found");
+      return;
+    }
+  
+    try {
+      const posts = await fetchPosts(agent);
+  
+      if (posts.length === 0 || lastPostId === posts[0].post.uri) return;
+      lastPostId = posts[0].post.uri;  // Update last post ID
+  
+      for (let i = posts.length - 1; i >= 0; i--) {
+        const post = posts[i];
+        const postURL = constructPostUrl(post);
+  
+        // Check for repost or original post
+        if (fetchReposts && post.post.author.handle !== process.env.BLUESKY_USERNAME) {
+          // Send the repost
+          await channel.send(`**Reposted** from ${post.post.author.handle} - ${postURL}`);
+        } else if (!fetchReposts && post.post.author.handle === process.env.BLUESKY_USERNAME) {
+          // Send the post
+          await channel.send(postURL);
         }
       }
+    } catch (error) {
+      console.error('Error fetching posts:', error);
     }
-  }, 30000);  // Check for new posts every 30 seconds
+  }, 30000);  // Check for new posts every 30 seconds  
 });
 
 // Handle slash commands
