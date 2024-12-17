@@ -119,7 +119,7 @@ client.once('ready', async () => {
               if (post.post.author.handle !== process.env.BLUESKY_USERNAME && fetchReposts == true) {
                 // Send the repost
                 await channel.send(`**Reposted** from ${post.post.author.handle} - ${postURL}`)
-              } else {
+              } else if (post.post.author.handle == process.env.BLUESKY_USERNAME && fetchReposts == false) {
                 // Send the post
                 await channel.send(`${postURL}`)
               }
