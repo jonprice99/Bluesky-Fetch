@@ -47,12 +47,19 @@ async function setupBlueskyAgent(): Promise<AtpAgent> {
   return agent;
 }
 
+let cachedBlueskyDID: string | null = null; // Cache the Bluesky DID to avoid multiple fetches
+
 async function getBlueskyDID(agent: AtpAgent): Promise<string> {
+  if (cachedBlueskyDID) {
+    return cachedBlueskyDID; // Return cached DID if available
+  }
+  
   const username = process.env.BLUESKY_USERNAME
 
   if (!username) { throw new Error('Bluesky username not set in .env file'); }
 
   const { data } = await agent.getProfile({ actor: username })
+  cachedBlueskyDID = data.did; // Cache the did for future use
   return data.did;
 }
 
