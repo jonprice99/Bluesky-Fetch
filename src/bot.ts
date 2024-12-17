@@ -71,7 +71,8 @@ async function fetchPosts(agent: AtpAgent): Promise<any[]> {
 }
 
 function constructPostUrl(post: any): string {
-  const postId = post.post.uri.split('/').pop(); // This gets the last segment after the last slash
+  const postUriSegments = post.post.uri.split('/');
+  const postId = postUriSegments[postUriSegments.length - 1]; // Get the last segment after the last slash
 
   return `https://bsky.app/profile/${post.post.author.handle}/post/${postId}`;
 }
