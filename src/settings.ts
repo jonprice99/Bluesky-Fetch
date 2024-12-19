@@ -1,10 +1,15 @@
 export let notificationChannelId: string | null = null;
+export let errorChannelId: string | null = null;
 export let fetchReposts = false;
 export let waitTime = 0;    // Wait time counter for fetch pause
 export let isPaused = false;
 
 export function setNotificationChannelId(notificationChannel: string) {
     notificationChannelId = notificationChannel;
+}
+
+export function setErrorChannelId(errorChannel: string) {
+    errorChannelId = errorChannel;
 }
 
 export function toggleReposts() {
