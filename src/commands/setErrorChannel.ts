@@ -1,5 +1,5 @@
 import { ChatInputCommandInteraction, SlashCommandBuilder, ChannelType, PermissionFlagsBits } from 'discord.js';
-import { setNotificationChannelId } from '../settings';
+import { setErrorChannelId } from '../settings';
 
 export const data = new SlashCommandBuilder()
     .setName('seterrorchannel')
@@ -15,7 +15,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const channel = interaction.options.get('channel');
 
     if (channel?.channel && channel.channel.type === ChannelType.GuildText) {
-        setNotificationChannelId(channel.channel.id);
+        setErrorChannelId(channel.channel.id);
         await interaction.reply(`Error channel set to <#${channel.channel.id}>`);
     } else {
         await interaction.reply('Please select a valid text channel.');

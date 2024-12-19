@@ -3,7 +3,7 @@ import { commands } from './commands';
 import { deployCommands } from './deploy-commands';
 import { Client, GatewayIntentBits, TextChannel } from 'discord.js';
 import * as dotenv from 'dotenv';
-import { fetchReposts, notificationChannelId, isPaused, errorChannelId } from './settings'
+import { fetchReposts, notificationChannelId, isPaused, errorChannelId, usernameEntered, setUsernameEntered, setPasswordEntered } from './settings'
 
 dotenv.config();
 
@@ -34,6 +34,11 @@ async function setupBlueskyAgent(): Promise<AtpAgent> {
 
   if (!username || !appPassword) {
     throw new Error('Bluesky username or password not set in .env file');
+  }
+
+  if (username && appPassword) {
+    setUsernameEntered(true);
+    setPasswordEntered(true);
   }
 
   const agent = new AtpAgent({
