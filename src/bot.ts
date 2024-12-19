@@ -3,7 +3,7 @@ import { commands } from './commands';
 import { deployCommands } from './deploy-commands';
 import { Client, GatewayIntentBits, TextChannel } from 'discord.js';
 import * as dotenv from 'dotenv';
-import { fetchReposts, notificationChannelId, isPaused } from './settings'
+import { fetchReposts, notificationChannelId, isPaused, errorChannelId } from './settings'
 
 dotenv.config();
 
@@ -44,6 +44,10 @@ async function setupBlueskyAgent(): Promise<AtpAgent> {
     password: appPassword
   });
 
+  if (!agent) {
+    throw new Error('Bluesky username or password is invalid.');
+  }
+
   return agent;
 }
 
@@ -53,7 +57,7 @@ async function getBlueskyDID(agent: AtpAgent): Promise<string> {
   if (cachedBlueskyDID) {
     return cachedBlueskyDID; // Return cached DID if available
   }
-  
+
   const username = process.env.BLUESKY_USERNAME
 
   if (!username) { throw new Error('Bluesky username not set in .env file'); }
@@ -83,41 +87,67 @@ client.once('ready', async () => {
   console.log("deploying commands...")
   await deployCommands();
 
-  const agent = await setupBlueskyAgent();
-  let lastPostId = '';  // Store the ID of the last post fetched
+  try {
+    // try to set up Bluesky agent
+    const agent = await setupBlueskyAgent();
+    console.log('Bluesky agent setup successful.');
 
-  setInterval(async () => {
-    if (isPaused || !notificationChannelId) return;
-  
-    const channel = client.channels.cache.get(notificationChannelId) as TextChannel;
-    if (!channel) {
-      console.error("Notification channel not found");
+    let lastPostId = '';  // Store the ID of the last post fetched
+
+    setInterval(async () => {
+      if (isPaused || !notificationChannelId || !errorChannelId) return;
+
+      const errorChannel = client.channels.cache.get(errorChannelId) as TextChannel;
+
+      const channel = client.channels.cache.get(notificationChannelId) as TextChannel;
+      if (!channel) {
+        console.error("Notification channel not found");
+        errorChannel.send("There was an error when trying to find your notification channel. Please use **/setchannel** to make sure the Bluesky notification channel set.");
+        return;
+      }
+
+      try {
+        // try to fetch posts
+        const posts = await fetchPosts(agent);
+
+        if (posts.length === 0 || lastPostId === posts[0].post.uri) return;
+        lastPostId = posts[0].post.uri;  // Update last post ID
+
+        for (let i = posts.length - 1; i >= 0; i--) {
+          const post = posts[i];
+          const postURL = constructPostUrl(post);
+
+          // Check for repost or original post
+          if (fetchReposts && post.post.author.handle !== process.env.BLUESKY_USERNAME) {
+            // Send the repost
+            await channel.send(`**Reposted** from ${post.post.author.handle} - ${postURL}`);
+          } else if (!fetchReposts && post.post.author.handle === process.env.BLUESKY_USERNAME) {
+            // Send the post
+            await channel.send(postURL);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching posts:', error);
+        errorChannel.send(`There was an error fetching posts from Bluesky. Please contact Bluesky Fetch developer and provide the following console error: ${error}`);
+      }
+    }, 30000);  // Check for new posts every 30 seconds
+  } catch (error) {
+    // Error setting up Bluesky agent
+    console.error('Error setting up Bluesky agent:', error);
+
+    if (!errorChannelId) {
+      console.error('errorChannelId is null and must be set');
       return;
     }
-  
-    try {
-      const posts = await fetchPosts(agent);
-  
-      if (posts.length === 0 || lastPostId === posts[0].post.uri) return;
-      lastPostId = posts[0].post.uri;  // Update last post ID
-  
-      for (let i = posts.length - 1; i >= 0; i--) {
-        const post = posts[i];
-        const postURL = constructPostUrl(post);
-  
-        // Check for repost or original post
-        if (fetchReposts && post.post.author.handle !== process.env.BLUESKY_USERNAME) {
-          // Send the repost
-          await channel.send(`**Reposted** from ${post.post.author.handle} - ${postURL}`);
-        } else if (!fetchReposts && post.post.author.handle === process.env.BLUESKY_USERNAME) {
-          // Send the post
-          await channel.send(postURL);
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching posts:', error);
+
+    const errorChannel = client.channels.cache.get(errorChannelId) as TextChannel;
+    if (!errorChannel) {
+      console.error('Error channel not found');
+      return;
+    } else {
+      errorChannel.send("There was an error setting up the Bluesky agent. Please check your username and/or app password for Bluesky and try again.")
     }
-  }, 30000);  // Check for new posts every 30 seconds  
+  }
 });
 
 // Handle slash commands
