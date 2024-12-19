@@ -2,6 +2,7 @@ import { ChatInputCommandInteraction, SlashCommandBuilder, PermissionFlagsBits }
 import * as dotenv from 'dotenv';
 import * as fs from 'fs';
 import * as path from 'path';
+import { setUsernameEntered, setPasswordEntered } from '../settings';
 
 export const data = new SlashCommandBuilder()
     .setName('setusernameandpassword')
@@ -35,11 +36,13 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     const newEnvUsernameString = Object.entries(envVars).map(([k, v]) => `${k}=${v}`).join('\n');
     fs.writeFileSync(envPath, newEnvUsernameString);
+    setUsernameEntered(true);
 
     envVars[envPasswordKey] = passwordValue;
 
     const newEnvPasswordString = Object.entries(envVars).map(([k, v]) => `${k}=${v}`).join('\n');
     fs.writeFileSync(envPath, newEnvPasswordString);
+    setPasswordEntered(true);
 
     dotenv.config(); // Reload environment variables from the updated .env file
 
