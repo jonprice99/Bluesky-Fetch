@@ -1,4 +1,4 @@
-import { ChatInputCommandInteraction, Message, SlashCommandBuilder } from 'discord.js';
+import { ChatInputCommandInteraction, Message, SlashCommandBuilder, PermissionFlagsBits } from 'discord.js';
 import { waitTime, setIsPaused, setWaitTime } from '../settings';
 
 let pauseConfirmation: Message | null = null; // In-memory variable to store the confirmation message
@@ -13,9 +13,14 @@ export async function deletePauseConfirmation() {
 export const data = new SlashCommandBuilder()
     .setName('pause')
     .setDescription('Pause Bluesky Fetch from getting new posts for a bit')
-    .addIntegerOption(option => option.setName('duration').setDescription('Duration (in seconds) of the pause').setRequired(true));
+    .addIntegerOption(option => option.setName('duration').setDescription('Duration (in seconds) of the pause').setRequired(true))
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
 
 export async function execute(interaction: ChatInputCommandInteraction) {
+    if (!interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)) {
+        return interaction.reply("You do not have permission to use this command.");
+    }
+
     const seconds = interaction.options.getInteger('duration');
     if (!seconds || seconds <= 0) {
         await interaction.reply('Please provide a duration for the pause.');
@@ -24,8 +29,10 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     setWaitTime(seconds);
     setIsPaused(true);
-    pauseConfirmation = await interaction.reply({ content: `Pause set to ${seconds} seconds. Bluesky Fetch will wait for this duration before fetching posts again. 
-    (If you wish to end the pause early, use the **/unpause** command.)`, fetchReply: true });
+    pauseConfirmation = await interaction.reply({
+        content: `Pause set to ${seconds} seconds. Bluesky Fetch will wait for this duration before fetching posts again. 
+    (If you wish to end the pause early, use the **/unpause** command.)`, fetchReply: true
+    });
 
     setTimeout(async () => {
         setIsPaused(false); // Unlock the bot logic after the wait time
