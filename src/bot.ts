@@ -123,9 +123,14 @@ client.once('ready', async () => {
           const postURL = constructPostUrl(post);
 
           // Check for repost or original post
-          if (fetchReposts && post.post.author.handle !== process.env.BLUESKY_USERNAME) {
-            // Send the repost
-            await channel.send(`**Reposted** from ${post.post.author.handle} - ${postURL}`);
+          if (fetchReposts) {
+            if (post.post.author.handle !== process.env.BLUESKY_USERNAME) {
+              // Send the repost
+              await channel.send(`**Reposted** from ${post.post.author.handle} - ${postURL}`);
+            } else {
+              // Send the post
+              await channel.send(postURL);
+            }
           } else if (!fetchReposts && post.post.author.handle === process.env.BLUESKY_USERNAME) {
             // Send the post
             await channel.send(postURL);
