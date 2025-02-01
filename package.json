@@ -11,7 +11,7 @@
   "license": "ISC",
   "dependencies": {
     "@atproto/api": "^0.13.32",
-    "@types/node": "^22.10.3",
+    "@types/node": "^22.13.0",
     "@types/ws": "^8.5.13",
     "bluesky-fetch": "file:",
     "discord.js": "^14.16.3",
