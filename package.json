@@ -10,7 +10,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@atproto/api": "^0.13.32",
+    "@atproto/api": "^0.14.7",
     "@types/node": "^22.13.0",
     "@types/ws": "^8.5.14",
     "bluesky-fetch": "file:",
