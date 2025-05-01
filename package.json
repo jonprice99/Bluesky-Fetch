@@ -15,7 +15,7 @@
     "@types/ws": "^8.18.1",
     "bluesky-fetch": "file:",
     "discord.js": "^14.18.0",
-    "dotenv": "^16.4.7",
+    "dotenv": "^16.5.0",
     "fs": "^0.0.1-security",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.2"
